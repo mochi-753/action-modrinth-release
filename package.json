@@ -7,7 +7,8 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "build": "ncc build src/index.ts -o dist --minify"
+    "build": "ncc build src/index.ts -o dist --minify",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@actions/core": "^3.0.1",

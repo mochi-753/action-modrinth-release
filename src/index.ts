@@ -4,10 +4,38 @@ import { join } from "node:path";
 
 type VersionType = "release" | "beta" | "alpha";
 
+type Dependency = {
+    version_id?: string | null;
+    project_id?: string | null;
+    file_name?: string | null;
+    dependency_type: "required" | "optional" | "incompatible" | "embedded";
+};
+
+type VersionUploadRequest = {
+    name: string;
+    version_number: string;
+    changelog: string;
+    dependencies: Dependency[];
+    game_versions: string[];
+    version_type: VersionType;
+    loaders: string[];
+    featured: boolean;
+    project_id: string;
+    file_parts: string[];
+    primary_file?: string;
+};
+
+type ModrinthVersionResponse = Record<string, unknown>;
+
 const VERSION_TYPES = new Set<VersionType>(["release", "beta", "alpha"]);
+const DEPENDENCY_TYPES = new Set<Dependency["dependency_type"]>(["required", "optional", "incompatible", "embedded"]);
+
+function getTrimmedInput(name: string, options?: core.InputOptions): string {
+    return core.getInput(name, options).trim();
+}
 
 function getValidatedInput<T extends string>(name: string, allowedValues: ReadonlySet<T>): T {
-    const value = core.getInput(name);
+    const value = getTrimmedInput(name, { required: true });
 
     if (!allowedValues.has(value as T)) {
         throw new Error(`Invalid ${name}: ${value}. Expected one of: ${Array.from(allowedValues).join(", ")}`);
@@ -16,31 +44,63 @@ function getValidatedInput<T extends string>(name: string, allowedValues: Readon
     return value as T;
 }
 
+function getRequiredMultilineInput(name: string): string[] {
+    const values = core.getMultilineInput(name, { required: true }).map(value => value.trim()).filter(Boolean);
+
+    if (values.length === 0) {
+        throw new Error(`Input ${name} must contain at least one non-empty value.`);
+    }
+
+    return values;
+}
+
+function parseDependencies(value: string): Dependency[] {
+    const dependencies: unknown = JSON.parse(value);
+
+    if (!Array.isArray(dependencies)) {
+        throw new Error("Dependencies must be a JSON array.");
+    }
+
+    for (const [index, dependency] of dependencies.entries()) {
+        if (typeof dependency !== "object" || dependency === null || Array.isArray(dependency)) {
+            throw new Error(`Dependency at index ${index} must be an object.`);
+        }
+
+        const dependencyType = (dependency as Partial<Dependency>).dependency_type;
+
+        if (!DEPENDENCY_TYPES.has(dependencyType as Dependency["dependency_type"])) {
+            throw new Error(`Dependency at index ${index} must include a valid dependency_type.`);
+        }
+    }
+
+    return dependencies as Dependency[];
+}
+
 async function resolveChangeLog(): Promise<string> {
     const directChangeLog = core.getInput("change_log");
-    const pathChangeLog = core.getInput("change_log_path");
+    const pathChangeLog = getTrimmedInput("change_log_path");
 
-    if (directChangeLog && directChangeLog.trim().length > 0) {
+    if (directChangeLog.trim().length > 0) {
         return directChangeLog;
     }
 
-    if (pathChangeLog && pathChangeLog.trim().length > 0) {
+    if (pathChangeLog.length > 0) {
         return await readFile(pathChangeLog, "utf8");
     }
 
     return "";
 }
 
-async function resolveDependencies(): Promise<unknown[]> {
-    const directDependencies = core.getInput("dependencies");
-    const pathDependencies = core.getInput("dependencies_path");
+async function resolveDependencies(): Promise<Dependency[]> {
+    const directDependencies = getTrimmedInput("dependencies");
+    const pathDependencies = getTrimmedInput("dependencies_path");
 
-    if (directDependencies && directDependencies.trim().length > 0) {
-        return JSON.parse(directDependencies);
+    if (directDependencies.length > 0) {
+        return parseDependencies(directDependencies);
     }
 
-    if (pathDependencies && pathDependencies.trim().length > 0) {
-        return JSON.parse(await readFile(pathDependencies, "utf8"));
+    if (pathDependencies.length > 0) {
+        return parseDependencies(await readFile(pathDependencies, "utf8"));
     }
 
     return [];
@@ -52,7 +112,7 @@ type UploadFile = {
     buffer: Buffer;
 };
 
-async function upload(data: any, files: UploadFile[]): Promise<any> {
+async function upload(data: VersionUploadRequest, files: UploadFile[]): Promise<ModrinthVersionResponse> {
     const formData = new FormData();
 
     formData.set(
@@ -73,7 +133,7 @@ async function upload(data: any, files: UploadFile[]): Promise<any> {
     const response = await fetch("https://api.modrinth.com/v2/version", {
         method: "POST",
         headers: {
-            Authorization: `Bearer ${core.getInput("token")}`,
+            Authorization: `Bearer ${getTrimmedInput("token", { required: true })}`,
             "User-Agent": `${process.env.GITHUB_REPOSITORY ?? "unknown/repo"}/action-modrinth-release`,
         },
         body: formData,
@@ -85,36 +145,36 @@ async function upload(data: any, files: UploadFile[]): Promise<any> {
         throw new Error(`Failed to upload file: ${response.status} ${response.statusText} - ${responseText}`);
     }
 
-    return JSON.parse(responseText);
+    return JSON.parse(responseText) as ModrinthVersionResponse;
 }
 
 async function main() {
     try {
-        const name = core.getInput("name");
-        const version_number = core.getInput("version_number");
+        const versionNumber = getTrimmedInput("version_number", { required: true });
+        const name = getTrimmedInput("name") || versionNumber;
         const changeLog = await resolveChangeLog();
-        const dependencies_data = await resolveDependencies();
-        const gameVersions = core.getMultilineInput("game_versions");
-        const versionType: VersionType = getValidatedInput("version_type", VERSION_TYPES);
-        const loaders = core.getMultilineInput("loaders");
-        const projectId = core.getInput("project_id");
+        const dependencies = await resolveDependencies();
+        const gameVersions = getRequiredMultilineInput("game_versions");
+        const versionType = getValidatedInput("version_type", VERSION_TYPES);
+        const loaders = getRequiredMultilineInput("loaders");
+        const projectId = getTrimmedInput("project_id", { required: true });
 
-        const data: any = {
+        const data: VersionUploadRequest = {
             name,
-            version_number,
+            version_number: versionNumber,
             changelog: changeLog,
-            dependencies: dependencies_data,
+            dependencies,
             game_versions: gameVersions,
             version_type: versionType,
             loaders,
             featured: true,
             project_id: projectId,
-            file_parts: [] as string[],
+            file_parts: [],
         };
 
         console.log("Data:", JSON.stringify(data, null, 2));
 
-        const filesPath = core.getInput("files_path");
+        const filesPath = getTrimmedInput("files_path", { required: true });
         const jarFiles = (await readdir(filesPath, { withFileTypes: true }))
             .filter(file => file.isFile() && file.name.endsWith(".jar"))
             .map(file => file.name);
@@ -137,12 +197,12 @@ async function main() {
             });
         }
 
-        data.primary_file = data.file_parts[0];
+        data.primary_file = uploadFiles[0]!.partName;
 
         const result = await upload(data, uploadFiles);
         console.log("Upload result:", JSON.stringify(result, null, 2));
     } catch (error) {
-        core.setFailed(`Action failed. ${error}`);
+        core.setFailed(`Action failed. ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
