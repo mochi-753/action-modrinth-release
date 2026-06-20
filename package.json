@@ -1,6 +1,6 @@
 {
   "name": "action-modrinth-release",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "GitHub Action for creating Modrinth Releases",
   "license": "MIT",
   "author": "Mochi753",
