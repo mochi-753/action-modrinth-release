@@ -19,7 +19,7 @@ A GitHub Action for uploading Minecraft mod/plugin versions to Modrinth via the 
 
 ```yaml
 - name: Upload Modrinth Release
-  uses: your-org/modrinth-release-action@v1
+  uses: mochi-753/modrinth-release-action@v1
   with:
     token: ${{ secrets.MODRINTH_TOKEN }}
     project_id: your_project_id
