@@ -1,0 +1,50 @@
+name: "Modrinth Release"
+description: "GitHub Action for creating Modrinth releases"
+author: "Mochi753"
+
+inputs:
+  change_log:
+    description: "Change log to be submitted to Modrinth"
+    required: false
+  change_log_path:
+    description: "Path to the changelog to be submitted to Modrinth"
+    required: false
+  name:
+    description: "The release name displayed on Modrinth"
+    required: false
+  version_number:
+    description: "The version number to publish"
+    required: true
+  game_versions:
+    description: "The game versions this release is for. Can be specified multiple times."
+    required: false
+  loaders:
+    description: "The loaders this release is for. Can be specified multiple times."
+    required: false
+  version_type:
+    description: "The type of the release. Can be either 'release', 'beta' or 'alpha'. Defaults to 'release'."
+    required: true
+    default: "release"
+  dependencies:
+    description: "Dependencies for this file."
+    required: false
+  dependencies_path:
+    description: "Path to the file containing the dependencies for this file."
+    required: false
+  token:
+    description: "Modrinth API Token."
+    required: true
+  project_id:
+    description: "The project ID to create the release for."
+    required: true
+  files_path:
+    description: "Path to the directory containing the files to be uploaded for this release."
+    required: true
+
+runs:
+  using: node24
+  main: "dist/index.js"
+
+branding:
+  color: green
+  icon: package
