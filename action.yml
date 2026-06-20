@@ -17,10 +17,10 @@ inputs:
     required: true
   game_versions:
     description: "The game versions this release is for. Can be specified multiple times."
-    required: false
+    required: true
   loaders:
     description: "The loaders this release is for. Can be specified multiple times."
-    required: false
+    required: true
   version_type:
     description: "The type of the release. Can be either 'release', 'beta' or 'alpha'. Defaults to 'release'."
     required: true

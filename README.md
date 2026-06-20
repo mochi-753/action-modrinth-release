@@ -45,6 +45,8 @@ A GitHub Action for uploading Minecraft mod/plugin versions to Modrinth via the 
 | project_id     | Target Modrinth project ID        |
 | version_number | Version identifier                |
 | files_path     | Directory containing `.jar` files |
+| game_versions  | Supported Minecraft versions      |
+| loaders        | Mod loaders (fabric / neoforge etc) |
 
 ---
 
@@ -55,8 +57,8 @@ A GitHub Action for uploading Minecraft mod/plugin versions to Modrinth via the 
 | name              | Release name                                        |
 | change_log        | Changelog text                                      |
 | change_log_path   | Path to changelog file                              |
-| game_versions     | Supported Minecraft versions                        |
-| loaders           | Mod loaders (fabric / neoforge etc)                 |
 | version_type      | `release` \| `beta` \| `alpha` (default: `release`) |
 | dependencies      | JSON dependencies                                   |
 | dependencies_path | Path to dependencies JSON                           |
+
+If `name` is omitted, the action uses `version_number` as the Modrinth release name. The `dependencies` input and `dependencies_path` file must contain a JSON array of Modrinth dependency objects.
