@@ -14,7 +14,7 @@
     "@actions/core": "^3.0.1",
     "@types/node": "^26.1.2",
     "@vercel/ncc": "^0.44.1",
-    "marked": "^18.0.7",
+    "marked": "^18.0.9",
     "typescript": "^6.0.3"
   }
 }
